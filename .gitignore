@@ -1,0 +1,4 @@
+.ipynb_checkpoints
+./api/heart_disease2.db
+./api/heart_disease.db
+./SmartWatch_Dashboard/db.sqlite3
