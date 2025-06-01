@@ -515,4 +515,4 @@ def get_daily_predictions():
 
 if __name__ == '__main__':
     init_db()
-    app.run(host='0.0.0.0', port=8081, debug=False)
+    app.run(host='0.0.0.0', port=5001, debug=False)
