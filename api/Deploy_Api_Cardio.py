@@ -256,7 +256,6 @@ def update_user(username):
 
 @app.route('/predict', methods=['POST'])
 def predict():
-    """Endpoint de prédiction de risque cardiaque"""
     try:
         data = request.get_json()
         if not data or 'api_key' not in data or 'data' not in data:
@@ -276,15 +275,15 @@ def predict():
                 (data['api_key'],
                  json.dumps(data['data']),
                  float(prediction),
-                 bool(risk),
+                 int(risk),  # ici on convertit en int (0 ou 1)
                  datetime.now().isoformat())
             )
             conn.commit()
 
         return jsonify({
             "status": "success",
-            "prediction": prediction,
-            "risk": risk,
+            "prediction": float(prediction),
+            "risk": bool(risk),
             "timestamp": datetime.now().isoformat()
         })
 
@@ -292,7 +291,8 @@ def predict():
         return jsonify({"status": "error", "message": str(e)}), 400
     except Exception as e:
         logger.error(f"Erreur de prédiction : {str(e)}")
-        return jsonify({"status": "error", "message": "Erreur lors de la prédiction" ,"detail":str(e)}), 500
+        return jsonify({"status": "error", "message": "Erreur lors de la prédiction", "detail": str(e)}), 500
+
 
 
 @app.route('/users', methods=['GET'])
