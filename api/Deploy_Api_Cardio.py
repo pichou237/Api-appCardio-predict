@@ -27,7 +27,7 @@ EMAIL_REGEX = re.compile(r'^[\w\.-]+@[\w\.-]+\.\w+$')
 # Chargement sécurisé du modèle
 model = None
 try:
-    with open("finalized_model.sav", "rb") as f:
+    with open("api/finalized_model.sav", "rb") as f:
         model = pickle.load(f)
     logger.info("Modèle chargé avec succès")
 except Exception as e:
