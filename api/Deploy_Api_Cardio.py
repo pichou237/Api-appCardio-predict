@@ -292,7 +292,7 @@ def predict():
         return jsonify({"status": "error", "message": str(e)}), 400
     except Exception as e:
         logger.error(f"Erreur de prédiction : {str(e)}")
-        return jsonify({"status": "error", "message": "Erreur lors de la prédiction"}), 500
+        return jsonify({"status": "error", "message": "Erreur lors de la prédiction" ,"detail":str(e)}), 500
 
 
 @app.route('/users', methods=['GET'])
