@@ -368,14 +368,14 @@ def login():
     """Endpoint d'authentification utilisateur"""
     try:
         data = request.get_json()
-        if not data or 'username' not in data or 'password' not in data:
-            return jsonify({"status": "error", "message": "Nom d'utilisateur et mot de passe requis"}), 400
+        if not data or 'email' not in data or 'password' not in data:
+            return jsonify({"status": "error", "message": "email d'utilisateur et mot de passe requis"}), 400
 
         with sqlite3.connect(DATABASE) as conn:
             cursor = conn.cursor()
             cursor.execute(
-                "SELECT password_hash, api_key FROM users WHERE username = ?",
-                (data['username'],))
+                "SELECT password_hash, api_key FROM users WHERE email = ?",
+                (data['email'],))
             result = cursor.fetchone()
 
             if not result:
