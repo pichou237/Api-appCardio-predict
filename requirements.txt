@@ -99,3 +99,4 @@ Werkzeug==2.2.3
 numpy
 flask-cors
 flask-socketio==5.3.6
+scikit-learn==1.4.2
