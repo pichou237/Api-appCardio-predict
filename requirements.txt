@@ -97,4 +97,4 @@ vine==5.1.0
 wcwidth==0.2.13
 Werkzeug==2.2.3
 numpy
-
+flask-cors
