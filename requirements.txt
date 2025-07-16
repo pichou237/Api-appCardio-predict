@@ -100,3 +100,15 @@ numpy
 flask-cors
 flask-socketio==5.3.6
 scikit-learn==1.4.2
+
+flask
+flask-cors
+flask-socketio
+pandas
+numpy
+psycopg2-binary
+werkzeug
+sendgrid
+itsdangerous
+scikit-learn
+joblib
