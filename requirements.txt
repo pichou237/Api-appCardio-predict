@@ -98,3 +98,4 @@ wcwidth==0.2.13
 Werkzeug==2.2.3
 numpy
 flask-cors
+flask-socketio==5.3.6
