@@ -1,4 +1,4 @@
-import pickle
+import pandas as pd
 import json
 import numpy as np
 from flask import Flask, jsonify, request
@@ -13,7 +13,8 @@ import logging
 from flask_socketio import SocketIO, emit, disconnect, join_room
 import warnings
 from sklearn.exceptions import InconsistentVersionWarning
-
+from flask import request, jsonify
+from datetime import datetime
 import sendgrid
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
@@ -208,24 +209,129 @@ def validate_api_key(api_key):
 #     normalized_data = (data_array - mean_values) / std_values
 #     return round(model.predict_proba(normalized_data.reshape(1, -1))[0][0] * 100, 2)
 
-def get_prediction(data_dict):
-    if model is None:
-        raise ValueError("Model not loaded")
+# def get_prediction(data_dict):
+#     if model is None:
+#         raise ValueError("Model not loaded")
+#
+#     # Vérifie que toutes les features attendues sont présentes
+#     missing_features = [f for f in feature_names if f not in data_dict]
+#     if missing_features:
+#         raise ValueError(f"Données manquantes : {', '.join(missing_features)}")
+#
+#     try:
+#         # Préparer l'array dans le bon ordre
+#         data_array = np.array([data_dict[feat] for feat in feature_names]).reshape(1, -1)
+#         # Normaliser
+#         data_scaled = scaler.transform(data_array)
+#         # Prédire
+#         prediction = model.predict(data_scaled)[0]
+#         proba = model.predict_proba(data_scaled)[0]
+#
+#         risk_level = label_encoders['risque_cardio'].inverse_transform([prediction])[0]
+#
+#         return {
+#             'risk_level': risk_level,
+#             'probabilities': proba.tolist()
+#         }
+#     except Exception as e:
+#         logger.error(f"Erreur de prédiction : {str(e)}")
+#         raise
+#
 
-    # Vérifie que toutes les features attendues sont présentes
-    missing_features = [f for f in feature_names if f not in data_dict]
-    if missing_features:
-        raise ValueError(f"Données manquantes : {', '.join(missing_features)}")
+# Fonction pour compléter les données manquantes
+def compute_derived_features(data_dict):
+    poids = float(data_dict.get("poids", 0))
+    taille_cm = float(data_dict.get("taille", 0))
+    taille_m = taille_cm / 100.0 if taille_cm else 0
 
+    imc = poids / (taille_m ** 2) if taille_m else 0
+    data_dict["imc"] = round(imc, 2)
+    data_dict["age_risk"] = 1 if int(data_dict.get("age", 0)) > 50 else 0
+    data_dict["imc_risk"] = 1 if imc > 30 else 0
+
+    risk_factors = [
+        'tabac', 'diabete_connu', 'stress', 'sedentarite',
+        'sommeil_moins_6h', 'sommeil_mauvaise_qualite',
+        'alimentation_grasse', 'activite_physique', 'antecedents_familiaux'
+    ]
+
+    count = 0
+    for key in risk_factors:
+        value = data_dict.get(key, "Non")
+        if value == "Oui" or (key == "activite_physique" and value == "Non"):
+            count += 1
+    data_dict["risk_factor_count"] = count
+
+    return data_dict
+
+
+def preprocess_input(data_dict):
+    processed = {}
+
+    for key, value in data_dict.items():
+        if key in label_encoders:
+            le = label_encoders[key]
+            try:
+                processed[key] = le.transform([value])[0]
+            except ValueError:
+                logger.warning(f"Valeur inconnue pour {key}: {value} — remplacée par 0")
+                processed[key] = 0  # Valeur par défaut si valeur non vue pendant l'entraînement
+        else:
+            try:
+                processed[key] = float(value)
+            except ValueError:
+                logger.warning(f"Valeur non numérique inattendue pour {key}: {value} — remplacée par 0")
+                processed[key] = 0
+
+    # Ajout des variables dérivées si ton modèle les attend
     try:
-        # Préparer l'array dans le bon ordre
-        data_array = np.array([data_dict[feat] for feat in feature_names]).reshape(1, -1)
-        # Normaliser
+        taille_m = float(data_dict.get("taille", 0)) / 100
+        poids_kg = float(data_dict.get("poids", 0))
+        imc = round(poids_kg / (taille_m ** 2), 2) if taille_m > 0 else 0
+        processed["imc"] = imc
+        processed["age_risk"] = 1 if int(data_dict.get("age", 0)) >= 50 else 0
+        processed["imc_risk"] = 1 if imc > 25 else 0
+
+        # Compter le nombre de facteurs de risque "Oui"
+        risk_keys = [
+            "tabac", "alcool", "sedentarite", "stress", "sommeil_moins_6h",
+            "sommeil_mauvaise_qualite", "alimentation_grasse", "symptomes_diabete",
+            "maux_tete", "essoufflement", "douleurs_poitrine"
+        ]
+        risk_factor_count = sum(1 for key in risk_keys if data_dict.get(key) == "Oui")
+        processed["risk_factor_count"] = risk_factor_count
+    except Exception as e:
+        logger.warning(f"Erreur lors du calcul des variables dérivées : {str(e)}")
+
+    return processed
+
+
+
+# Fonction de prédiction
+def get_prediction(data_dict):
+    try:
+        if model is None:
+            raise ValueError("Model not loaded")
+
+        # Prétraitement des données
+        data_processed = preprocess_input(data_dict)
+
+        # Vérification des champs requis
+        missing_features = [f for f in feature_names if f not in data_processed]
+        if missing_features:
+            raise ValueError(f"Données manquantes : {', '.join(missing_features)}")
+
+        # Conversion en tableau numpy dans l'ordre des features attendues
+        data_array = np.array([data_processed[feat] for feat in feature_names]).reshape(1, -1)
+
+        # Normalisation
         data_scaled = scaler.transform(data_array)
-        # Prédire
+
+        # Prédiction
         prediction = model.predict(data_scaled)[0]
         proba = model.predict_proba(data_scaled)[0]
 
+        # Interprétation du niveau de risque
         risk_level = label_encoders['risque_cardio'].inverse_transform([prediction])[0]
 
         return {
@@ -350,7 +456,7 @@ def login():
     cur = None
     try:
         data = request.get_json()
-        if not data or 'username' not in data or 'password' not in data:
+        if not data or 'email' not in data or 'password' not in data:
             return jsonify({"status": "error", "message": "Nom d'utilisateur et mot de passe requis"}), 400
 
         conn = get_db()
@@ -358,8 +464,8 @@ def login():
         cur.execute("""
             SELECT id, password_hash, api_key, role 
             FROM users 
-            WHERE username = %s
-        """, (data['username'],))
+            WHERE email = %s
+        """, (data['email'],))
 
         result = cur.fetchone()
         if not result:
@@ -386,6 +492,191 @@ def login():
             conn.close()
 
 
+# @app.route('/predict', methods=['POST'])
+# def predict():
+#     """Effectue une prédiction de risque cardiaque"""
+#     conn = None
+#     cur = None
+#     try:
+#         data = request.get_json()
+#         if not data or 'api_key' not in data or 'data' not in data:
+#             return jsonify({"status": "error", "message": "Clé API et données requises"}), 400
+#
+#         if not validate_api_key(data['api_key']):
+#             return jsonify({"status": "error", "message": "Clé API invalide"}), 403
+#
+#         # prediction = get_prediction(data['data'])
+#         # risk = bool(prediction > 45)
+#         result = get_prediction(data['data'])
+#         prediction = result['probabilities']  # ou une proba spécifique si tu veux
+#         risk_level = result['risk_level']
+#         risk = (risk_level == 'Élevé')
+#
+#         conn = get_db()
+#         cur = conn.cursor()
+#         # cur.execute(
+#         #     "INSERT INTO predictions (user_id, input_data, prediction, risk) "
+#         #     "VALUES ((SELECT id FROM users WHERE api_key = %s), %s, %s, %s) "
+#         #     "RETURNING id, timestamp",
+#         #     (data['api_key'], json.dumps(data['data']), prediction, risk)
+#         # )
+#
+#         cur.execute(
+#             "INSERT INTO predictions (user_id, input_data, prediction, risk) "
+#             "VALUES ((SELECT id FROM users WHERE api_key = %s), %s, %s, %s) "
+#             "RETURNING id, timestamp",
+#             (data['api_key'], json.dumps(data['data']), result['probabilities'][1], risk)
+#         )
+#
+#         pred_id, timestamp = cur.fetchone()
+#         conn.commit()
+#
+#         # Notification
+#         user_id = get_user_id_from_api_key(data['api_key'])
+#         if user_id:
+#             create_notification(
+#                 user_id,
+#                 "Résultat de prédiction",
+#                 f"Votre risque cardiaque est de {prediction}%",
+#                 "prediction",
+#                 {"prediction": prediction, "risk": risk}
+#             )
+#
+#         return jsonify({
+#             "status": "success",
+#             "prediction": prediction,
+#             "risk": risk,
+#             "timestamp": timestamp.isoformat(),
+#             "prediction_id": pred_id
+#         })
+#     except ValueError as e:
+#         return jsonify({"status": "error", "message": str(e)}), 400
+#     except Exception as e:
+#         logger.error(f"Erreur de prédiction : {str(e)}")
+#         return jsonify({"status": "error", "message": "Erreur lors de la prédiction"}), 500
+#     finally:
+#         if cur:
+#             cur.close()
+#         if conn:
+#             conn.close()
+
+
+# ✅ ROUTE /predict
+# @app.route('/predict', methods=['POST'])
+# def predict():
+#     conn = None
+#     cur = None
+#     try:
+#         data = request.get_json()
+#         if not data or 'api_key' not in data or 'data' not in data:
+#             return jsonify({"status": "error", "message": "Clé API et données requises"}), 400
+#
+#         if not validate_api_key(data['api_key']):
+#             return jsonify({"status": "error", "message": "Clé API invalide"}), 403
+#
+#         result = get_prediction(data['data'])
+#         prediction_proba = result['probabilities'][1]  # probabilité risque élevé
+#         risk_level = result['risk_level']
+#         risk = (risk_level == 'Élevé')
+#
+#         conn = get_db()
+#         cur = conn.cursor()
+#         cur.execute(
+#             "INSERT INTO predictions (user_id, input_data, prediction, risk) "
+#             "VALUES ((SELECT id FROM users WHERE api_key = %s), %s, %s, %s) "
+#             "RETURNING id, timestamp",
+#             (data['api_key'], json.dumps(data['data']), prediction_proba, risk)
+#         )
+#         pred_id, timestamp = cur.fetchone()
+#         conn.commit()
+#
+#         # Convertir numpy types en types natifs Python
+#         pred_id = int(pred_id)
+#         risk = bool(risk)
+#
+#         return jsonify({
+#             "status": "success",
+#             "prediction": prediction_proba,
+#             "risk_level": risk_level,
+#             "risk": risk,
+#             "timestamp": timestamp.isoformat(),
+#             "prediction_id": pred_id
+#         })
+#     except ValueError as e:
+#         return jsonify({"status": "error", "message": str(e)}), 400
+#     except Exception as e:
+#         logger.error(f"Erreur de prédiction : {str(e)}")
+#         return jsonify({"status": "error", "message": "Erreur lors de la prédiction"}), 500
+#     finally:
+#         if cur:
+#             cur.close()
+#         if conn:
+#             conn.close()
+
+# @app.route('/predict', methods=['POST'])
+# def predict():
+#     """Effectue une prédiction de risque cardiaque"""
+#     conn = None
+#     cur = None
+#     try:
+#         data = request.get_json()
+#
+#         if not data or 'api_key' not in data or 'data' not in data:
+#             return jsonify({"status": "error", "message": "Clé API et données requises"}), 400
+#
+#         if not validate_api_key(data['api_key']):
+#             return jsonify({"status": "error", "message": "Clé API invalide"}), 403
+#
+#         # Appel de la fonction de prédiction
+#         result = get_prediction(data['data'])
+#         prediction_score = result['probabilities'][1]  # probabilité d'être malade
+#         risk_level = result['risk_level']
+#         risk = (risk_level == 'Élevé')
+#
+#         conn = get_db()
+#         cur = conn.cursor()
+#
+#         # Insertion dans la base
+#         cur.execute(
+#             """
+#             INSERT INTO predictions (user_id, input_data, prediction, risk)
+#             VALUES ((SELECT id FROM users WHERE api_key = %s), %s, %s, %s)
+#             RETURNING id, timestamp
+#             """,
+#             (data['api_key'], json.dumps(data['data']), round(prediction_score * 100, 2), risk)
+#         )
+#
+#         row = cur.fetchone()
+#         conn.commit()
+#
+#         pred_id = row[0] if row else None
+#         timestamp = row[1].isoformat() if row and row[1] else datetime.utcnow().isoformat()
+#
+#         return jsonify({
+#             "status": "success",
+#             "prediction": round(prediction_score * 100, 2),
+#             "risk_level": risk_level,
+#             "risk": risk,
+#             "timestamp": timestamp,
+#             "prediction_id": pred_id
+#         })
+#
+#     except ValueError as e:
+#         return jsonify({"status": "error", "message": str(e)}), 400
+#
+#     except Exception as e:
+#         logger.error(f"Erreur de prédiction : {str(e)}")
+#         return jsonify({"status": "error", "message": "Erreur lors de la prédiction"}), 500
+#
+#     finally:
+#         if cur:
+#             cur.close()
+#         if conn:
+#             conn.close()
+
+
+from datetime import datetime
+
 @app.route('/predict', methods=['POST'])
 def predict():
     """Effectue une prédiction de risque cardiaque"""
@@ -393,61 +684,53 @@ def predict():
     cur = None
     try:
         data = request.get_json()
+
         if not data or 'api_key' not in data or 'data' not in data:
             return jsonify({"status": "error", "message": "Clé API et données requises"}), 400
 
         if not validate_api_key(data['api_key']):
             return jsonify({"status": "error", "message": "Clé API invalide"}), 403
 
-        # prediction = get_prediction(data['data'])
-        # risk = bool(prediction > 45)
+        # Appel de la fonction de prédiction
         result = get_prediction(data['data'])
-        prediction = result['probabilities']  # ou une proba spécifique si tu veux
+        prediction_score = result['probabilities'][1]  # probabilité d'être malade
         risk_level = result['risk_level']
         risk = (risk_level == 'Élevé')
 
+        timestamp = datetime.utcnow()
+
         conn = get_db()
         cur = conn.cursor()
-        # cur.execute(
-        #     "INSERT INTO predictions (user_id, input_data, prediction, risk) "
-        #     "VALUES ((SELECT id FROM users WHERE api_key = %s), %s, %s, %s) "
-        #     "RETURNING id, timestamp",
-        #     (data['api_key'], json.dumps(data['data']), prediction, risk)
-        # )
 
+        # Insertion dans la base
         cur.execute(
-            "INSERT INTO predictions (user_id, input_data, prediction, risk) "
-            "VALUES ((SELECT id FROM users WHERE api_key = %s), %s, %s, %s) "
-            "RETURNING id, timestamp",
-            (data['api_key'], json.dumps(data['data']), result['probabilities'][1], risk)
+            """
+            INSERT INTO predictions (user_id, input_data, prediction, risk, timestamp)
+            VALUES ((SELECT id FROM users WHERE api_key = %s), %s, %s, %s, %s)
+            RETURNING id
+            """,
+            (data['api_key'], json.dumps(data['data']), round(prediction_score * 100, 2), risk, timestamp)
         )
 
-        pred_id, timestamp = cur.fetchone()
+        pred_id = cur.fetchone()[0]
         conn.commit()
-
-        # Notification
-        user_id = get_user_id_from_api_key(data['api_key'])
-        if user_id:
-            create_notification(
-                user_id,
-                "Résultat de prédiction",
-                f"Votre risque cardiaque est de {prediction}%",
-                "prediction",
-                {"prediction": prediction, "risk": risk}
-            )
 
         return jsonify({
             "status": "success",
-            "prediction": prediction,
+            "prediction": round(prediction_score * 100, 2),
+            "risk_level": risk_level,
             "risk": risk,
             "timestamp": timestamp.isoformat(),
             "prediction_id": pred_id
         })
+
     except ValueError as e:
         return jsonify({"status": "error", "message": str(e)}), 400
+
     except Exception as e:
         logger.error(f"Erreur de prédiction : {str(e)}")
         return jsonify({"status": "error", "message": "Erreur lors de la prédiction"}), 500
+
     finally:
         if cur:
             cur.close()
@@ -455,53 +738,102 @@ def predict():
             conn.close()
 
 
+
+# @app.route('/history', methods=['GET'])
+# def get_history():
+#     """Récupère l'historique des prédictions d'un utilisateur"""
+#     conn = None
+#     cur = None
+#     try:
+#         api_key = request.args.get('api_key')
+#         if not api_key:
+#             return jsonify({"status": "error", "message": "Clé API requise"}), 400
+#
+#         if not validate_api_key(api_key):
+#             return jsonify({"status": "error", "message": "Clé API invalide"}), 403
+#
+#         conn = get_db()
+#         cur = conn.cursor()
+#         cur.execute("""
+#             SELECT id, input_data, prediction, risk, timestamp
+#             FROM predictions
+#             WHERE user_id = (SELECT id FROM users WHERE api_key = %s)
+#             ORDER BY timestamp DESC
+#             LIMIT 20
+#         """, (api_key,))
+#
+#         history = []
+#         for row in cur.fetchall():
+#             history.append({
+#                 "id": row[0],
+#                 "input_data": json.loads(row[1]),
+#                 "prediction": float(row[2]),
+#                 "risk": bool(row[3]),
+#                 "timestamp": row[4].isoformat()
+#             })
+#
+#         return jsonify({
+#             "status": "success",
+#             "count": len(history),
+#             "history": history
+#         })
+#     except Exception as e:
+#         logger.error(f"Erreur historique : {str(e)}")
+#         return jsonify({"status": "error", "message": "Erreur de récupération"}), 500
+#     finally:
+#         if cur:
+#             cur.close()
+#         if conn:
+#             conn.close()
+
 @app.route('/history', methods=['GET'])
-def get_history():
-    """Récupère l'historique des prédictions d'un utilisateur"""
+def get_prediction_history():
+    """Retourne l’historique des prédictions pour un utilisateur"""
+    api_key = request.args.get('api_key')
+
+    if not api_key:
+        return jsonify({"status": "error", "message": "Clé API requise"}), 400
+
+    if not validate_api_key(api_key):
+        return jsonify({"status": "error", "message": "Clé API invalide"}), 403
+
     conn = None
     cur = None
     try:
-        api_key = request.args.get('api_key')
-        if not api_key:
-            return jsonify({"status": "error", "message": "Clé API requise"}), 400
-
-        if not validate_api_key(api_key):
-            return jsonify({"status": "error", "message": "Clé API invalide"}), 403
-
         conn = get_db()
         cur = conn.cursor()
         cur.execute("""
-            SELECT id, input_data, prediction, risk, timestamp 
+            SELECT id, input_data, prediction, risk, timestamp
             FROM predictions
             WHERE user_id = (SELECT id FROM users WHERE api_key = %s)
             ORDER BY timestamp DESC
-            LIMIT 20
         """, (api_key,))
+        rows = cur.fetchall()
 
         history = []
-        for row in cur.fetchall():
+        for row in rows:
+            prediction_id, input_data, prediction, risk, timestamp = row
             history.append({
-                "id": row[0],
-                "input_data": json.loads(row[1]),
-                "prediction": float(row[2]),
-                "risk": bool(row[3]),
-                "timestamp": row[4].isoformat()
+                "prediction_id": prediction_id,
+                "input_data": input_data,
+                "prediction": float(prediction),
+                "risk": risk,
+                "timestamp": timestamp.isoformat() if timestamp else None
             })
 
         return jsonify({
             "status": "success",
-            "count": len(history),
             "history": history
         })
+
     except Exception as e:
         logger.error(f"Erreur historique : {str(e)}")
-        return jsonify({"status": "error", "message": "Erreur de récupération"}), 500
+        return jsonify({"status": "error", "message": "Erreur lors de la récupération de l'historique"}), 500
     finally:
         if cur:
             cur.close()
         if conn:
             conn.close()
-
 
 @app.route('/profile', methods=['GET'])
 def get_profile():
