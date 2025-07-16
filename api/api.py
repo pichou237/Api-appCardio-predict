@@ -62,16 +62,16 @@ scaler = None
 label_encoders = None
 feature_names = None
 
-try:
-    model_data = joblib.load("./cardio_model_cameroon.pkl")
-    model = model_data['model']
-    scaler = model_data['scaler']
-    label_encoders = model_data['label_encoders']
-    feature_names = model_data['feature_names']
-    logger.info("Modèle cardio_model_cameroon chargé avec succès")
-except Exception as e:
-    logger.error(f"Erreur de chargement du modèle : {str(e)}")
-    raise
+# try:
+#     model_data = joblib.load("./cardio_model_cameroon.pkl")
+#     model = model_data['model']
+#     scaler = model_data['scaler']
+#     label_encoders = model_data['label_encoders']
+#     feature_names = model_data['feature_names']
+#     logger.info("Modèle cardio_model_cameroon chargé avec succès")
+# except Exception as e:
+#     logger.error(f"Erreur de chargement du modèle : {str(e)}")
+#     raise
 
 import os
 import joblib
