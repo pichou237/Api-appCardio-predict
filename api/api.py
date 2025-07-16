@@ -73,6 +73,23 @@ except Exception as e:
     logger.error(f"Erreur de chargement du modèle : {str(e)}")
     raise
 
+import os
+import joblib
+
+# Obtenir le chemin absolu du fichier actuel (api.py)
+current_dir = os.path.dirname(os.path.abspath(__file__))
+
+# Construire le chemin absolu vers le modèle
+model_path = os.path.join(current_dir, "cardio_model_cameroon.pkl")
+
+# Charger le modèle
+try:
+    model_data = joblib.load(model_path)
+except Exception as e:
+    import logging
+    logging.error(f"Erreur de chargement du modèle : {e}")
+    raise
+
 
 # Statistiques de normalisation
 mean_values = np.array([0.6821, 0.9635, 131.6, 246.5, 149.56, 0.327, 1.043, 1.397, 0.7185, 2.314])
