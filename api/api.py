@@ -73,8 +73,29 @@ feature_names = None
 #     logger.error(f"Erreur de chargement du modèle : {str(e)}")
 #     raise
 
+# import os
+
+# # Obtenir le chemin absolu du fichier actuel (api.py)
+# current_dir = os.path.dirname(os.path.abspath(__file__))
+
+# # Construire le chemin absolu vers le modèle
+# model_path = os.path.join(current_dir, "cardio_model_cameroon.pkl")
+
+# # Charger le modèle
+# try:
+#     model_data = joblib.load(model_path)
+# except Exception as e:
+#     import logging
+#     logging.error(f"Erreur de chargement du modèle : {e}")
+#     raise
+
 import os
 import joblib
+import logging
+
+# Initialiser le logger si ce n'est pas déjà fait
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
 
 # Obtenir le chemin absolu du fichier actuel (api.py)
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -82,12 +103,16 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 # Construire le chemin absolu vers le modèle
 model_path = os.path.join(current_dir, "cardio_model_cameroon.pkl")
 
-# Charger le modèle
+# Charger le modèle avec gestion d'erreurs
 try:
     model_data = joblib.load(model_path)
+    model = model_data['model']
+    scaler = model_data['scaler']
+    label_encoders = model_data['label_encoders']
+    feature_names = model_data['feature_names']
+    logger.info("Modèle cardio_model_cameroon chargé avec succès")
 except Exception as e:
-    import logging
-    logging.error(f"Erreur de chargement du modèle : {e}")
+    logger.error(f"Erreur de chargement du modèle : {str(e)}")
     raise
 
 
