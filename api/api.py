@@ -1757,7 +1757,9 @@
 #         raise
 
 
-
+################################################################################################
+############################### api.py v3 ######################################################
+#################################################################################################
 import pandas as pd
 import json
 import numpy as np
@@ -2615,7 +2617,8 @@ def predict():
         # prediction_score = result['probabilities'][1]  # probabilité d'être malade
         prediction_score = max(result['probabilities'])
         risk_level = result['risk_level']
-        risk = (risk_level == ('Élevé','Modere'))
+        # Version correcte
+        risk = risk_level in {'Élevé', 'Modéré'}  # Utilisation d'un set pour l'efficacité
 
         timestamp = datetime.utcnow()
 
