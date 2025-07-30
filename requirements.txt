@@ -30,6 +30,8 @@ dparse==0.6.4
 drf-yasg==1.21.10
 filelock==3.16.1
 Flask==2.2.5
+flask-cors==4.0.0
+flask-socketio==5.3.6
 git-filter-repo==2.47.0
 gunicorn==23.0.0
 h11==0.16.0
@@ -49,7 +51,9 @@ MarkupSafe==3.0.2
 marshmallow==4.0.0
 mdurl==0.1.2
 nltk==3.9.1
+numpy==2.0.2
 packaging==24.2
+pandas==2.2.2
 pbr==6.1.1
 pillow==11.1.0
 pluggy==1.6.0
@@ -77,6 +81,8 @@ ruamel.yaml==0.18.14
 ruamel.yaml.clib==0.2.12
 safety==3.5.2
 safety-schemas==0.0.14
+scikit-learn==1.4.2
+sendgrid==6.11.0
 setuptools==80.9.0
 shellingham==1.5.4
 six==1.17.0
@@ -96,19 +102,3 @@ urllib3==2.4.0
 vine==5.1.0
 wcwidth==0.2.13
 Werkzeug==2.2.3
-numpy
-flask-cors
-flask-socketio==5.3.6
-scikit-learn==1.4.2
-
-flask
-flask-cors
-flask-socketio
-pandas
-numpy
-psycopg2-binary
-werkzeug
-sendgrid
-itsdangerous
-scikit-learn
-joblib
