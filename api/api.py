@@ -1824,8 +1824,23 @@ scaler = None
 label_encoders = None
 feature_names = None
 
+# try:
+#     model_data = joblib.load("./cardio_model_cameroon.pkl")
+#     model = model_data['model']
+#     scaler = model_data['scaler']
+#     label_encoders = model_data['label_encoders']
+#     feature_names = model_data['feature_names']
+#     logger.info("Modèle cardio_model_cameroon chargé avec succès")
+# except Exception as e:
+#     logger.error(f"Erreur de chargement du modèle : {str(e)}")
+#     raise
+
+# # Construire le chemin absolu vers le modèle
+model_path = os.path.join(current_dir, "cardio_model_cameroon.pkl")
+
+# Charger le modèle avec gestion d'erreurs
 try:
-    model_data = joblib.load("./cardio_model_cameroon.pkl")
+    model_data = joblib.load(model_path)
     model = model_data['model']
     scaler = model_data['scaler']
     label_encoders = model_data['label_encoders']
