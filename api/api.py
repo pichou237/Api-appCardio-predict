@@ -1835,6 +1835,9 @@ feature_names = None
 #     logger.error(f"Erreur de chargement du modèle : {str(e)}")
 #     raise
 
+import os
+
+current_dir = os.path.dirname(os.path.abspath(__file__))
 # # Construire le chemin absolu vers le modèle
 model_path = os.path.join(current_dir, "cardio_model_cameroon.pkl")
 
