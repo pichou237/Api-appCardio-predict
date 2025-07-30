@@ -51,7 +51,7 @@ MarkupSafe==3.0.2
 marshmallow==4.0.0
 mdurl==0.1.2
 nltk==3.9.1
-numpy==2.0.2
+numpy<2.0
 packaging==24.2
 pandas
 pbr==6.1.1
