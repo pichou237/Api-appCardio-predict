@@ -53,7 +53,7 @@ mdurl==0.1.2
 nltk==3.9.1
 numpy==2.0.2
 packaging==24.2
-pandas==2.2.2
+pandas
 pbr==6.1.1
 pillow==11.1.0
 pluggy==1.6.0
