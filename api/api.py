@@ -1825,7 +1825,7 @@ label_encoders = None
 feature_names = None
 
 try:
-    model_data = joblib.load("cardio_model_cameroon.pkl")
+    model_data = joblib.load("./cardio_model_cameroon.pkl")
     model = model_data['model']
     scaler = model_data['scaler']
     label_encoders = model_data['label_encoders']
