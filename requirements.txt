@@ -81,7 +81,7 @@ ruamel.yaml==0.18.14
 ruamel.yaml.clib==0.2.12
 safety==3.5.2
 safety-schemas==0.0.14
-scikit-learn==1.4.2
+scikit-learn
 sendgrid==6.11.0
 setuptools==80.9.0
 shellingham==1.5.4
