@@ -1795,9 +1795,15 @@ warnings.filterwarnings("ignore", category=InconsistentVersionWarning)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": "*"}})
-socketio = SocketIO(app, cors_allowed_origins="*")
+ app = Flask(__name__)
+# CORS(app, resources={r"/*": {"origins": "*"}})
+# socketio = SocketIO(app, cors_allowed_origins="*")
+
+# Autoriser uniquement ton frontend Vercel
+CORS(app, resources={r"/*": {"origins": "https://app-cardio.vercel.app"}})
+
+# Pour WebSockets
+socketio = SocketIO(app, cors_allowed_origins="https://app-cardio.vercel.app")
 
 # Configuration
 app.config[
