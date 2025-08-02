@@ -1799,8 +1799,18 @@ app = Flask(__name__)
 # CORS(app, resources={r"/*": {"origins": "*"}})
 # socketio = SocketIO(app, cors_allowed_origins="*")
 
-# Autoriser uniquement ton frontend Vercel
-CORS(app, resources={r"/*": {"origins": "https://app-cardio.vercel.app"}})
+# # Autoriser uniquement ton frontend Vercel
+# CORS(app, resources={r"/*": {"origins": "https://app-cardio.vercel.app" ,"http://localhost:8080"}})
+
+# Autoriser uniquement ton frontend Vercel et le localhost
+CORS(app, resources={
+    r"/*": {
+        "origins": [
+            "https://app-cardio.vercel.app",
+            "http://localhost:8080"
+        ]
+    }
+})
 
 # Pour WebSockets
 socketio = SocketIO(app, cors_allowed_origins="https://app-cardio.vercel.app")
@@ -3668,3 +3678,4 @@ if __name__ == '__main__':
     except Exception as e:
         logger.error(f"Application startup failed: {str(e)}")
         raise
+
