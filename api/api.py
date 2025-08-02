@@ -2315,8 +2315,8 @@ def register():
         cur = conn.cursor()
         try:
             cur.execute(
-                "INSERT INTO users (username, password_hash, email, api_key) VALUES (%s, %s, %s, %s) RETURNING id",
-                (data['username'], password_hash, data['email'], api_key)
+                "INSERT INTO users (username, password_hash, email, api_key ,role) VALUES (%s, %s, %s, %s,%s) RETURNING id",
+                (data['username'], password_hash, data['email'], api_key ,"Utilisateur")
             )
             user_id = cur.fetchone()[0]
             conn.commit()
@@ -3678,4 +3678,5 @@ if __name__ == '__main__':
     except Exception as e:
         logger.error(f"Application startup failed: {str(e)}")
         raise
+
 
