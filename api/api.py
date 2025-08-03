@@ -2747,9 +2747,59 @@ def predict():
 #         if conn:
 #             conn.close()
 
+# @app.route('/history', methods=['GET'])
+# def get_prediction_history():
+#     """Retourne l’historique des prédictions pour un utilisateur"""
+#     api_key = request.args.get('api_key')
+
+#     if not api_key:
+#         return jsonify({"status": "error", "message": "Clé API requise"}), 400
+
+#     if not validate_api_key(api_key):
+#         return jsonify({"status": "error", "message": "Clé API invalide"}), 403
+
+#     conn = None
+#     cur = None
+#     try:
+#         conn = get_db()
+#         cur = conn.cursor()
+#         cur.execute("""
+#             SELECT id, input_data, prediction, risk, timestamp
+#             FROM predictions
+#             WHERE user_id = (SELECT id FROM users WHERE api_key = %s)
+#             ORDER BY timestamp DESC
+#         """, (api_key,))
+#         rows = cur.fetchall()
+
+#         history = []
+#         for row in rows:
+#             prediction_id, input_data, prediction, risk, timestamp = row
+#             history.append({
+#                 "prediction_id": prediction_id,
+#                 "input_data": input_data,
+#                 "prediction": float(prediction),
+#                 "risk": risk,
+#                 "timestamp": timestamp.isoformat() if timestamp else None
+#             })
+
+#         return jsonify({
+#             "status": "success",
+#             "history": history
+#         })
+
+#     except Exception as e:
+#         logger.error(f"Erreur historique : {str(e)}")
+#         return jsonify({"status": "error", "message": "Erreur lors de la récupération de l'historique"}), 500
+#     finally:
+#         if cur:
+#             cur.close()
+#         if conn:
+#             conn.close()
+
+
 @app.route('/history', methods=['GET'])
 def get_prediction_history():
-    """Retourne l’historique des prédictions pour un utilisateur"""
+    """Retourne l'historique des prédictions pour un utilisateur"""
     api_key = request.args.get('api_key')
 
     if not api_key:
@@ -2764,7 +2814,7 @@ def get_prediction_history():
         conn = get_db()
         cur = conn.cursor()
         cur.execute("""
-            SELECT id, input_data, prediction, risk, timestamp
+            SELECT id, input_data, prediction, risk, risk_level, timestamp
             FROM predictions
             WHERE user_id = (SELECT id FROM users WHERE api_key = %s)
             ORDER BY timestamp DESC
@@ -2773,12 +2823,13 @@ def get_prediction_history():
 
         history = []
         for row in rows:
-            prediction_id, input_data, prediction, risk, timestamp = row
+            prediction_id, input_data, prediction, risk, risk_level, timestamp = row
             history.append({
                 "prediction_id": prediction_id,
                 "input_data": input_data,
                 "prediction": float(prediction),
                 "risk": risk,
+                "risk_level": risk_level,  # Ajout du niveau de risque
                 "timestamp": timestamp.isoformat() if timestamp else None
             })
 
@@ -2795,6 +2846,7 @@ def get_prediction_history():
             cur.close()
         if conn:
             conn.close()
+
 
 # @app.route('/profile', methods=['GET'])
 # def get_profile():
@@ -3826,6 +3878,7 @@ if __name__ == '__main__':
     except Exception as e:
         logger.error(f"Application startup failed: {str(e)}")
         raise
+
 
 
 
