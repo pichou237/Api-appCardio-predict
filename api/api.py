@@ -2662,11 +2662,11 @@ def predict():
         # Insertion dans la base
         cur.execute(
             """
-            INSERT INTO predictions (user_id, input_data, prediction, risk, timestamp)
-            VALUES ((SELECT id FROM users WHERE api_key = %s), %s, %s, %s, %s)
+            INSERT INTO predictions (user_id, input_data, prediction, risk, timestamp,risk_level)
+            VALUES ((SELECT id FROM users WHERE api_key = %s), %s, %s, %s, %s,%s)
             RETURNING id
             """,
-            (data['api_key'], json.dumps(data['data']), round(prediction_score * 100, 2), risk, timestamp)
+            (data['api_key'], json.dumps(data['data']), round(prediction_score * 100, 2), risk, timestamp,risk_level)
         )
 
         pred_id = cur.fetchone()[0]
@@ -3822,6 +3822,7 @@ if __name__ == '__main__':
     except Exception as e:
         logger.error(f"Application startup failed: {str(e)}")
         raise
+
 
 
 
