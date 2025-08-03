@@ -2792,6 +2792,67 @@ def get_prediction_history():
         if conn:
             conn.close()
 
+# @app.route('/profile', methods=['GET'])
+# def get_profile():
+#     """Récupère le profil utilisateur"""
+#     conn = None
+#     cur = None
+#     try:
+#         api_key = request.args.get('api_key')
+#         if not api_key:
+#             return jsonify({"status": "error", "message": "Clé API requise"}), 400
+
+#         if not validate_api_key(api_key):
+#             return jsonify({"status": "error", "message": "Clé API invalide"}), 403
+
+#         conn = get_db()
+#         cur = conn.cursor()
+#         cur.execute("""
+#             SELECT id, username, email, role, created_at
+#             FROM users
+#             WHERE api_key = %s
+#         """, (api_key,))
+
+#         user = cur.fetchone()
+#         if not user:
+#             return jsonify({"status": "error", "message": "Utilisateur non trouvé"}), 404
+
+#         # Récupérer les stats des prédictions
+#         cur.execute("""
+#             SELECT 
+#                 COUNT(*) as total_predictions,
+#                 AVG(prediction) as average_risk,
+#                 MAX(timestamp) as last_prediction
+#             FROM predictions
+#             WHERE user_id = %s
+#         """, (user[0],))
+#         stats = cur.fetchone()
+
+#         return jsonify({
+#             "status": "success",
+#             "profile": {
+#                 "id": user[0],
+#                 "username": user[1],
+#                 "email": user[2],
+#                 "role": user[3],
+#                 "created_at": user[4].isoformat(),
+#                 "stats": {
+#                     "total_predictions": stats[0] if stats[0] else 0,
+#                     "average_risk": round(float(stats[1]), 2) if stats[1] else 0,
+#                     "last_prediction": stats[2].isoformat() if stats[2] else None
+#                 }
+#             }
+#         })
+#     except Exception as e:
+#         logger.error(f"Erreur profil : {str(e)}")
+#         return jsonify({"status": "error", "message": "Erreur de récupération"}), 500
+#     finally:
+#         if cur:
+#             cur.close()
+#         if conn:
+#             conn.close()
+
+
 @app.route('/profile', methods=['GET'])
 def get_profile():
     """Récupère le profil utilisateur"""
@@ -2817,6 +2878,12 @@ def get_profile():
         if not user:
             return jsonify({"status": "error", "message": "Utilisateur non trouvé"}), 404
 
+        user_id = user[0]
+        username = user[1]
+        email = user[2]
+        role = user[3]
+        created_at = user[4]
+
         # Récupérer les stats des prédictions
         cur.execute("""
             SELECT 
@@ -2825,17 +2892,17 @@ def get_profile():
                 MAX(timestamp) as last_prediction
             FROM predictions
             WHERE user_id = %s
-        """, (user[0],))
+        """, (user_id,))
         stats = cur.fetchone()
 
         return jsonify({
             "status": "success",
             "profile": {
-                "id": user[0],
-                "username": user[1],
-                "email": user[2],
-                "role": user[3],
-                "created_at": user[4].isoformat(),
+                "id": user_id,
+                "username": username,
+                "email": email,
+                "role": role,
+                "created_at": created_at.isoformat() if created_at else None,
                 "stats": {
                     "total_predictions": stats[0] if stats[0] else 0,
                     "average_risk": round(float(stats[1]), 2) if stats[1] else 0,
@@ -3678,5 +3745,6 @@ if __name__ == '__main__':
     except Exception as e:
         logger.error(f"Application startup failed: {str(e)}")
         raise
+
 
 
