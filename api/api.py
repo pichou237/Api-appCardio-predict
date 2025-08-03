@@ -2651,6 +2651,9 @@ def predict():
         # prediction_score = result['probabilities'][1]  # probabilité d'être malade
         prediction_score = max(result['probabilities'])
         risk_level = result['risk_level']
+
+        probabilities_json = json.dumps(result['probabilities'])  # Conversion des probabilités en JSON
+
         # Version correcte
         risk = risk_level in {'Élevé', 'Modéré'}  # Utilisation d'un set pour l'efficacité
 
@@ -2666,7 +2669,7 @@ def predict():
             VALUES ((SELECT id FROM users WHERE api_key = %s), %s, %s, %s, %s,%s,%s)
             RETURNING id
             """,
-            (data['api_key'], json.dumps(data['data']), round(prediction_score * 100, 2), risk, timestamp,risk_level,probabilities)
+            (data['api_key'], json.dumps(data['data']), round(prediction_score * 100, 2), risk, timestamp,risk_level,probabilities_json)
         )
 
         pred_id = cur.fetchone()[0]
@@ -2677,7 +2680,7 @@ def predict():
             "prediction": round(prediction_score * 100, 3) , # 96.876 au lieu de (96.876, 3),
             "risk_level": risk_level,
             "risk": risk,
-            "probabilities":result['probabilities'],
+            "probabilities":probabilities_json,
             "timestamp": timestamp.isoformat(),
             "prediction_id": pred_id
         })
@@ -3823,6 +3826,7 @@ if __name__ == '__main__':
     except Exception as e:
         logger.error(f"Application startup failed: {str(e)}")
         raise
+
 
 
 
