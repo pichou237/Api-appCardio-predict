@@ -3000,6 +3000,83 @@ def update_profile():
             conn.close()
 
 
+
+@app.route('/api/statistics/user', methods=['GET'])
+def get_user_prediction_stats():
+    conn = None
+    cur = None
+    try:
+        api_key = request.args.get('api_key')
+        if not api_key:
+            return jsonify({"error": "Clé API requise"}), 400
+
+        if not validate_api_key(api_key):
+            return jsonify({"error": "Clé API invalide"}), 403
+
+        conn = get_db()
+        cur = conn.cursor()
+
+        # Récupérer l'id de l'utilisateur
+        cur.execute("SELECT id FROM users WHERE api_key = %s", (api_key,))
+        user = cur.fetchone()
+        if not user:
+            return jsonify({"error": "Utilisateur non trouvé"}), 404
+        user_id = user[0]
+
+        # Total de prédictions
+        cur.execute("SELECT COUNT(*) FROM predictions WHERE user_id = %s", (user_id,))
+        total_predictions = cur.fetchone()[0] or 0
+
+        # Prédictions du mois
+        start_month = datetime.today().replace(day=1)
+        cur.execute("""
+            SELECT COUNT(*) FROM predictions 
+            WHERE user_id = %s AND timestamp >= %s
+        """, (user_id, start_month))
+        monthly_predictions = cur.fetchone()[0] or 0
+
+        # Prédictions aujourd’hui
+        start_day = datetime.today().replace(hour=0, minute=0, second=0, microsecond=0)
+        cur.execute("""
+            SELECT COUNT(*) FROM predictions 
+            WHERE user_id = %s AND timestamp >= %s
+        """, (user_id, start_day))
+        daily_predictions = cur.fetchone()[0] or 0
+
+        # Moyenne du risque
+        cur.execute("SELECT AVG(prediction) FROM predictions WHERE user_id = %s", (user_id,))
+        average = cur.fetchone()[0]
+        average_risk = round(float(average), 2) if average else 0
+
+        # Dernière prédiction
+        cur.execute("""
+            SELECT prediction, timestamp 
+            FROM predictions 
+            WHERE user_id = %s 
+            ORDER BY timestamp DESC 
+            LIMIT 1
+        """, (user_id,))
+        last = cur.fetchone()
+        last_prediction = round(float(last[0]), 2) if last else None
+        last_prediction_time = last[1].strftime('%Y-%m-%d %H:%M:%S') if last else None
+
+        return jsonify({
+            "totalPredictions": total_predictions,
+            "monthlyPredictions": monthly_predictions,
+            "dailyPredictions": daily_predictions,
+            "averageRisk": average_risk,
+            "lastPrediction": last_prediction,
+            "lastPredictionTime": last_prediction_time
+        })
+    except Exception as e:
+        logger.error(f"Erreur stats utilisateur : {str(e)}")
+        return jsonify({"error": "Erreur lors de la récupération"}), 500
+    finally:
+        if cur: cur.close()
+        if conn: conn.close()
+
+
+
 @app.route('/doctors', methods=['GET'])
 def list_doctors():
     """Liste tous les médecins disponibles"""
@@ -3745,6 +3822,7 @@ if __name__ == '__main__':
     except Exception as e:
         logger.error(f"Application startup failed: {str(e)}")
         raise
+
 
 
 
